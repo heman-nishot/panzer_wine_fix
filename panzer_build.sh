@@ -7,15 +7,22 @@ set -euo pipefail
 
 # Configurable paths (defaults to ~/.wine-panzer)
 WINEPREFIX="${WINEPREFIX:-$HOME/.wine-panzer}"
+WINE_CMD="${WINE:-wine}"
 BUILDER_DIR="$WINEPREFIX/drive_c/panzer_builder"
 DAEMON_SCRIPT="$WINEPREFIX/zig_daemon.py"
+LOG_FILE="$WINEPREFIX/zig-daemon.log"
 
 export WINEPREFIX
 export WINEARCH=win64
 export WINEDEBUG=-all
 
+# Ensure Zig caches use disk inside the prefix (no /tmp or tmpfs)
+export ZIG_GLOBAL_CACHE_DIR="$WINEPREFIX/zig-cache/global"
+export ZIG_LOCAL_CACHE_DIR="$WINEPREFIX/zig-cache/local"
+mkdir -p "$ZIG_GLOBAL_CACHE_DIR" "$ZIG_LOCAL_CACHE_DIR"
+
 # Start background Zig compiler daemon
-python3 "$DAEMON_SCRIPT" > /tmp/zig-daemon.log 2>&1 &
+python3 "$DAEMON_SCRIPT" > "$LOG_FILE" 2>&1 &
 DAEMON_PID=$!
 
 cleanup() {
@@ -34,7 +41,7 @@ echo " Wine Prefix:   $WINEPREFIX"
 echo " Builder Dir:   $BUILDER_DIR"
 echo " Native Zig:    $($WINEPREFIX/zig-native/zig version 2>/dev/null || echo '0.15.2')"
 echo " Zig Daemon:    PID $DAEMON_PID (listening on 127.0.0.1:45678)"
-echo " Daemon Log:    /tmp/zig-daemon.log"
+echo " Daemon Log:    $LOG_FILE"
 echo "=========================================================="
 echo ""
 
@@ -50,4 +57,4 @@ for arg in "$@"; do
 done
 
 cd "$BUILDER_DIR"
-wine "C:\\panzer_builder\\builder.exe" "${args[@]}"
+"$WINE_CMD" "C:\\panzer_builder\\builder.exe" "${args[@]}"

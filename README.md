@@ -92,10 +92,10 @@ You can also pass the builder options directly, for example:
   --out "$HOME/Documents/Panzer Dragoon Games"
 ```
 
-For a multi-disc game, pass each disc with its own `--disc` option.
-(e.g. *Panzer Dragoon Saga* Discs 1–4):
+For a multi-disc game, pass each disc with its own `--disc` option (e.g. *Panzer Dragoon Saga* Discs 1–4):
+
 ```bash
-~/.wine-panzer/panzer-build.sh \
+~/.wine-panzer/panzer_build.sh \
   --disc "/path/to/Disc 1.cue" \
   --disc "/path/to/Disc 2.cue" \
   --disc "/path/to/Disc 3.cue" \
@@ -105,13 +105,24 @@ For a multi-disc game, pass each disc with its own `--disc` option.
 
 ## Play the game
 
-Run the executable from its output folder so it can find `SDL2.dll` and its `.ini` file:
+You must change directory (`cd`) into the output folder so the game executable can locate its `SDL2.dll` and `.ini` settings:
 
 ```bash
+cd "$HOME/Documents/Panzer Dragoon Games"
 WINEPREFIX=~/.wine-panzer wine pds-recompile.exe
 ```
 
 In-game, **Esc** or gamepad **Back** opens settings; **F11** toggles fullscreen.
+
+## Steam Deck / SteamOS Notes
+
+1. **Persistent Cache (No `/tmp` / RAM-disk errors)**:
+   SteamOS mounts `/tmp` as a `tmpfs` (in RAM). To prevent `error: CacheCheckFailed` or memory exhaustion during compilation, the scripts explicitly isolate all Zig compilation caches to persistent storage on disk inside `$WINEPREFIX/zig-cache/`.
+2. **Custom Wine / Proton**:
+   If running on SteamOS without system Wine installed, you can specify your Proton or Wine binary using the `WINE` environment variable:
+   ```bash
+   WINE="/path/to/proton" ~/.wine-panzer/panzer_build.sh
+   ```
 
 ## Disclaimer
 

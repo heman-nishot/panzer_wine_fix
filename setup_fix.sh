@@ -23,7 +23,16 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WINEPREFIX="${WINEPREFIX:-$HOME/.wine-panzer}"
+WINE_CMD="${WINE:-wine}"
 BUILDER_DEST="$WINEPREFIX/drive_c/panzer_builder"
+
+# Isolate Zig caches to persistent disk storage inside the prefix
+# (Avoids /tmp and tmpfs/RAM-disk CacheCheckFailed errors on SteamOS / Steam Deck)
+ZIG_GLOBAL_CACHE_DIR="$WINEPREFIX/zig-cache/global"
+ZIG_LOCAL_CACHE_DIR="$WINEPREFIX/zig-cache/local"
+mkdir -p "$ZIG_GLOBAL_CACHE_DIR" "$ZIG_LOCAL_CACHE_DIR"
+export ZIG_GLOBAL_CACHE_DIR
+export ZIG_LOCAL_CACHE_DIR
 
 echo "=== 1. Initializing 64-bit Wine prefix at $WINEPREFIX ==="
 WINEARCH=win64 WINEPREFIX="$WINEPREFIX" wineboot --init
@@ -35,10 +44,10 @@ cp -r "$SRC_DIR"/* "$BUILDER_DEST/"
 echo "=== 3. Downloading native Linux Zig 0.15.2 ==="
 mkdir -p "$WINEPREFIX/zig-native"
 if [ ! -f "$WINEPREFIX/zig-native/zig" ]; then
-    TMP_TAR="/tmp/zig-0.15.2-linux-x86_64.tar.xz"
-    curl -L -o "$TMP_TAR" "https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz"
-    tar -xf "$TMP_TAR" -C "$WINEPREFIX/zig-native" --strip-components=1
-    rm -f "$TMP_TAR"
+    DOWNLOAD_TAR="$WINEPREFIX/zig-native.tar.xz"
+    curl -L -o "$DOWNLOAD_TAR" "https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz"
+    tar -xf "$DOWNLOAD_TAR" -C "$WINEPREFIX/zig-native" --strip-components=1
+    rm -f "$DOWNLOAD_TAR"
 fi
 echo "Native Zig version: $("$WINEPREFIX/zig-native/zig" version)"
 
@@ -57,6 +66,8 @@ else:
 
 echo "=== 5. Compiling and installing Windows PE zig.exe proxy ==="
 "$WINEPREFIX/zig-native/zig" cc -O2 -target x86_64-windows \
+    --cache-dir "$ZIG_LOCAL_CACHE_DIR" \
+    --global-cache-dir "$ZIG_GLOBAL_CACHE_DIR" \
     "$SCRIPT_DIR/zig_proxy.c" -lws2_32 \
     -o "$BUILDER_DEST/zig/zig.exe"
 

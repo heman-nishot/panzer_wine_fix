@@ -22,6 +22,14 @@ WINE_PREFIX = os.path.expanduser(os.environ.get("WINEPREFIX", "~/.wine-panzer"))
 NATIVE_ZIG = os.environ.get("NATIVE_ZIG", os.path.join(WINE_PREFIX, "zig-native/zig"))
 WINE_DRIVE_C = os.path.join(WINE_PREFIX, "drive_c")
 
+# Force Zig compilation cache to persistent disk storage in the prefix
+# This avoids /tmp and tmpfs/RAM-disk cache validation errors on SteamOS / Steam Deck
+CACHE_DIR = os.path.join(WINE_PREFIX, "zig-cache")
+GLOBAL_CACHE_DIR = os.path.join(CACHE_DIR, "global")
+LOCAL_CACHE_DIR = os.path.join(CACHE_DIR, "local")
+os.makedirs(GLOBAL_CACHE_DIR, exist_ok=True)
+os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
+
 def win_to_unix(text):
     if not text:
         return text
@@ -98,9 +106,15 @@ def handle_client(conn, client_addr):
         conv_args = [process_arg(a) for a in raw_args]
         cmd = [NATIVE_ZIG] + conv_args
 
+        # Configure environment with explicit persistent cache directories
+        sub_env = os.environ.copy()
+        sub_env["ZIG_GLOBAL_CACHE_DIR"] = GLOBAL_CACHE_DIR
+        sub_env["ZIG_LOCAL_CACHE_DIR"] = LOCAL_CACHE_DIR
+
         proc = subprocess.Popen(
             cmd,
             cwd=conv_cwd,
+            env=sub_env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             bufsize=0
